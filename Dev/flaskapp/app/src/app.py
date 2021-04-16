@@ -8,19 +8,19 @@ from boto3.dynamodb.conditions import Key
 application = Flask(__name__)
 tableName = "users"
 
-application.config["MONGO_URI"] = (
-    "mongodb://"
-    + os.environ["MONGODB_USERNAME"]
-    + ":"
-    + os.environ["MONGODB_PASSWORD"]
-    + "@"
-    + os.environ["MONGODB_HOSTNAME"]
-    + ":27017/"
-    + os.environ["MONGODB_DATABASE"]
-)
+# #application.config["MONGO_URI"] = (
+#     "mongodb://"
+#     + os.environ["MONGODB_USERNAME"]
+#     + ":"
+#     + os.environ["MONGODB_PASSWORD"]
+#     + "@"
+#     + os.environ["MONGODB_HOSTNAME"]
+#     + ":27017/"
+#     + os.environ["MONGODB_DATABASE"]
+#)
 
-mongo = PyMongo(application)
-db = mongo.db
+# mongo = PyMongo(application)
+# db = mongo.db
 dynamo_client = boto3.client(
     "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
 )
@@ -33,8 +33,8 @@ def index():
     )
 
 
-@application.route("/createtable")
-def createtable():
+@application.route("/inittable")
+def init_table():
     # Get the service resource.
     # Create the DynamoDB table.
     dynamo_client = boto3.resource(
@@ -62,7 +62,7 @@ def createtable():
 
 
 @application.route("/createitem")
-def createitem():
+def create_item():
     # if not dynamodb:
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
@@ -73,26 +73,26 @@ def createitem():
     return jsonify(status=True, data=response)
 
 
-@application.route("/todo")
-def todo():
-    _todos = db.todo.find()
+# @application.route("/todo")
+# def todo():
+#     _todos = db.todo.find()
 
-    item = {}
-    data = []
-    for todo in _todos:
-        item = {"id": str(todo["_id"]), "todo": todo["todo"]}
-        data.append(item)
+#     item = {}
+#     data = []
+#     for todo in _todos:
+#         item = {"id": str(todo["_id"]), "todo": todo["todo"]}
+#         data.append(item)
 
-    return jsonify(status=True, data=data)
+#     return jsonify(status=True, data=data)
 
 
-@application.route("/todo", methods=["POST"])
-def createTodo():
-    data = request.get_json(force=True)
-    item = {"todo": data["todo"]}
-    db.todo.insert_one(item)
+# @application.route("/todo", methods=["POST"])
+# def createTodo():
+#     data = request.get_json(force=True)
+#     item = {"todo": data["todo"]}
+#     db.todo.insert_one(item)
 
-    return jsonify(status=True, message="To-do saved successfully!"), 201
+#     return jsonify(status=True, message="To-do saved successfully!"), 201
 
 
 @application.route("/items")
