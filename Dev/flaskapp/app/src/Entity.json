@@ -1,3 +1,16 @@
+// Vector & Digital APIs
+// getActiveOffers
+// redeemOffers
+// getToken
+// getAllOffers
+
+// Digital APIs
+// activeOffers
+// get RecommendedOffers
+// Register
+// Member wallet
+
+
 { "member": [{
 "Attribute Name": "BJS",
 "Partner Code": "",
@@ -26,3 +39,7 @@
 }
 ]
 }
+
+{"Offer": [{"OfferID": ""}]}
+{"Member:"[{}]}
+
