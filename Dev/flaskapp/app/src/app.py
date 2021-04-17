@@ -1,4 +1,21 @@
 # https://www.digitalocean.com/community/tutorials/how-to-set-up-flask-with-mongodb-and-docker
+#a = APPID = 0bb27904-1297-48d9-b649-1f1e098fd95f
+#n = MAXOFFERS = 400
+#i = 0
+#sb = sortBY - EX
+#so = sortOrder - asc
+#https://bjs.apir.receiptiq.com/service/user/token?p=6cac42f3-36ac-4c4c-aac5-f63e6f2ae15c&s=120fb46d-ef6b-4ef1-8913-64c8e487c5da&u=08642403500&ut=LoyaltyNumber
+#https://bjs.apir.receiptiq.com/service/offers/activated?t=e477faaf-87d3-4dea-bccc-76927f9c0f4d&a=0bb27904-1297-48d9-b649-1f1e098fd95f&n=400&i=0&sb=EX&so=asc
+#filter="redeemable:yes"
+#channel = Toshiba Vector
+#transactionID 
+#zipcode
+#offers - json
+
+#https://bjs.apir.receiptiq.com/service/offers/redeem?t=17e25ecb-7e4f-4961-8b99-27efa410081f&a=0bb27904-1297-48d9-b649-1f1e098fd95f
+
+
+##TODO Set timeouts on connections
 import os
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
@@ -56,7 +73,7 @@ def init_table():
             # {"AttributeName": "lastUpdateDate", "AttributeType": "N"},
             # {"AttributeName": "offerCode", "AttributeType": "S"},
             # {"AttributeName": "offerID", "AttributeType": "S"},
-            # {"AttributeName": "startDate", "AttributeType": "N"},
+            {"AttributeName": "ActiveDate", "AttributeType": "N"},
             {"AttributeName": "EndDate", "AttributeType": "N"},
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
@@ -66,6 +83,14 @@ def init_table():
                 "KeySchema": [
                     {"AttributeName": "PK", "KeyType": "HASH"},  # Partition key
                     {"AttributeName": "EndDate", "KeyType": "RANGE"},  # Sort key
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+            },
+            {
+                "IndexName": "OffersByStartDate",
+                "KeySchema": [
+                    {"AttributeName": "PK", "KeyType": "HASH"},  # Partition key
+                    {"AttributeName": "ActiveDate", "KeyType": "RANGE"},  # Sort key
                 ],
                 "Projection": {"ProjectionType": "ALL"},
             },
@@ -91,9 +116,10 @@ def create_member():
             "PK": "USER#ddayley",
             "SK": "#PROFILE#ddayley",
             "Email": "ddayley@bjs.com",
-            "EndDate": 20210401,
+            "ActiveDate": 20210401,
+            "EndDate": 20210405,
         }
-    )
+    )   
     return jsonify(status=True, data=response)
 
 
@@ -112,15 +138,40 @@ def create_offer():
             "OfferType": "Recommended",
             "OfferID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
             "LastUpdatedDate": "04-01-21",
-            "StartDate": "2021-04-01",
-            "EndDate": 20210401,
+            "ActiveDate": 20210401,
+            "EndDate": 20210405,
         }
     )
+    response = table.put_item(
+        Item={
+            "PK": "USER#ddayley",
+            "SK": "OFFER#tide",
+            "OfferCode": "21474008",
+            "OfferType": "Recommended",
+            "OfferID": "e517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+            "Redeemed": "False",
+            "LastUpdatedDate": "04-01-21",
+            "ActiveDate": 20210401,
+            "EndDate": 20210405,
+        }
+    )
+    # esponse = table.put_item(
+    #     Item={
+    #         "PK": "USER#ndayley",
+    #         "SK": "OFFER#tide",
+    #         "OfferCode": "21474008",
+    #         "OfferType": "Recommended",
+    #         "OfferID": "e517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+    #         "LastUpdatedDate": "04-01-21",
+    #         "ActiveDate": 20210401,
+    #         "EndDate": 20210405,
+    #     }
+    # )
     return jsonify(status=True, data=response)
 
 
-@application.route("/items")
-def get_items():
+@application.route("/getActiveOffers")
+def getActiveOffers():
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
@@ -131,9 +182,9 @@ def get_items():
         TableName="members",
         IndexName="OffersByEndDate",
         KeyConditionExpression=Key("PK").eq("USER#ddayley")
-        & Key("EndDate").eq(20210401),
+        & Key("EndDate").eq(20210405),
     )
-    # print(response)
+    ##TODO Filter out the upcoming offers
     return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
 

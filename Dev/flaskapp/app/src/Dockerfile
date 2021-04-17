@@ -1,6 +1,6 @@
 FROM python:3.6.8-alpine3.9
 
-LABEL MAINTAINER="FirstName LastName <example@domain.com>"
+LABEL MAINTAINER="Don Dayley <example@domain.com>"
 
 ENV GROUP_ID=1000 \
     USER_ID=1000

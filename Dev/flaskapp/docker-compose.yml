@@ -5,7 +5,7 @@ services:
       context: ./app/src
       dockerfile: Dockerfile
     container_name: flask
-    image: digitalocean.com/flask-python:3.6
+    image: ddayley/flask-python:3.6
     restart: unless-stopped
     environment:
       APP_ENV: "dev"
@@ -62,7 +62,7 @@ services:
     build:
       context: nginx
       dockerfile: Dockerfile
-    image: digitalocean.com/webserver:latest
+    image: ddayley/webserver:latest
     container_name: webserver
     restart: unless-stopped
     environment:
