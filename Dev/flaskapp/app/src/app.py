@@ -8,7 +8,9 @@ from boto3.dynamodb.conditions import Key
 
 application = Flask(__name__)
 tableName = "members"
-
+dynamodb = boto3.resource(
+    "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
+)
 dynamo_client = boto3.client(
     "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
 )
@@ -19,21 +21,28 @@ def index():
     return jsonify(status=True, message="Welcome to the Dockerized Flask MongoDB app!")
 
 
+@application.route("/listtables")
+def list_table():
+    response = boto3.client(
+        "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
+    ).list_tables()
+    return jsonify(status=True, message=response)
+
+
 @application.route("/inittable")
 def init_table():
-    # Get the service resource.
-    dynamo_client = boto3.resource(
-        "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
-    )
-    # Delete the table before creating it.
-    table = dynamo_client.Table(tableName)
     try:
-        table.delete()
+        dynamo_client = boto3.client(
+            "dynamodb",
+            region_name="us-west-1",
+            endpoint_url="http://dynamodb-local:8000",
+        )
+        response = dynamo_client.delete_table(TableName="members")
     except:
-        print("error happened")
-     # Create the DynamoDB table.
+        print("Error - Resource Does not exist!")
+    # Create the DynamoDB table.
     table = dynamo_client.create_table(
-        TableName=tableName,
+        TableName="members",
         KeySchema=[
             {"AttributeName": "PK", "KeyType": "HASH"},
             {"AttributeName": "SK", "KeyType": "RANGE"},
@@ -64,9 +73,9 @@ def init_table():
     )
 
     # Wait until the table exists.
-    table.meta.client.get_waiter("table_exists").wait(TableName=tableName)
+    # table.meta.client.get_waiter("table_exists").wait(TableName=tableName)
     # Print out some data about the table.
-    return jsonify(status=True, message="table.item_count")
+    return "Table created"
 
 
 @application.route("/createmember")
@@ -75,6 +84,7 @@ def create_member():
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
+
     table = dynamodb.Table(tableName)
     response = table.put_item(
         Item={
@@ -108,6 +118,7 @@ def create_offer():
     )
     return jsonify(status=True, data=response)
 
+
 @application.route("/items")
 def get_items():
     dynamodb = boto3.resource(
@@ -117,13 +128,13 @@ def get_items():
     cDate = "2021-04-01"
     memberID = "USER#ddayley"
     response = table.query(
-        TableName="users",
+        TableName="members",
         IndexName="OffersByEndDate",
         KeyConditionExpression=Key("PK").eq("USER#ddayley")
         & Key("EndDate").eq(20210401),
     )
-    #print(response)
-    return simplejson.dumps(response['Items']), 201
+    # print(response)
+    return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
 
 
