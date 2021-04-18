@@ -35,7 +35,7 @@ dynamo_client = boto3.client(
 
 @application.route("/")
 def index():
-    return jsonify(status=True, message="Welcome to the Dockerized Flask MongoDB app!")
+    return jsonify(status=True, message="Welcome to the Dockerized Flask DynamoDB app!")
 
 
 @application.route("/listtables")
@@ -73,16 +73,18 @@ def init_table():
             # {"AttributeName": "lastUpdateDate", "AttributeType": "N"},
             # {"AttributeName": "offerCode", "AttributeType": "S"},
             # {"AttributeName": "offerID", "AttributeType": "S"},
+            # {"AttributeName": "Redeemed", "AttributeType": "B"},
             {"AttributeName": "ActiveDate", "AttributeType": "N"},
             {"AttributeName": "EndDate", "AttributeType": "N"},
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
         LocalSecondaryIndexes=[
             {
-                "IndexName": "OffersByEndDate",
+                "IndexName": "ActiveOffers",
                 "KeySchema": [
                     {"AttributeName": "PK", "KeyType": "HASH"},  # Partition key
                     {"AttributeName": "EndDate", "KeyType": "RANGE"},  # Sort key
+                
                 ],
                 "Projection": {"ProjectionType": "ALL"},
             },
@@ -180,9 +182,9 @@ def getActiveOffers():
     memberID = "USER#ddayley"
     response = table.query(
         TableName="members",
-        IndexName="OffersByEndDate",
+        IndexName="ActiveOffers",
         KeyConditionExpression=Key("PK").eq("USER#ddayley")
-        & Key("EndDate").eq(20210405),
+        & Key("EndDate").gt(20210407),
     )
     ##TODO Filter out the upcoming offers
     return simplejson.dumps(response["Items"]), 201
