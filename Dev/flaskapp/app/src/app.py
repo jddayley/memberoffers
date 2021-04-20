@@ -1,28 +1,45 @@
 # https://www.digitalocean.com/community/tutorials/how-to-set-up-flask-with-mongodb-and-docker
-#a = APPID = 0bb27904-1297-48d9-b649-1f1e098fd95f
-#n = MAXOFFERS = 400
-#i = 0
-#sb = sortBY - EX
-#so = sortOrder - asc
-#https://bjs.apir.receiptiq.com/service/user/token?p=6cac42f3-36ac-4c4c-aac5-f63e6f2ae15c&s=120fb46d-ef6b-4ef1-8913-64c8e487c5da&u=08642403500&ut=LoyaltyNumber
-#https://bjs.apir.receiptiq.com/service/offers/activated?t=e477faaf-87d3-4dea-bccc-76927f9c0f4d&a=0bb27904-1297-48d9-b649-1f1e098fd95f&n=400&i=0&sb=EX&so=asc
-#filter="redeemable:yes"
-#channel = Toshiba Vector
-#transactionID 
-#zipcode
-#offers - json
+# a = APPID = 0bb27904-1297-48d9-b649-1f1e098fd95f
+# n = MAXOFFERS = 400
+# i = 0
+# sb = sortBY - EX
+# so = sortOrder - asc
+# https://bjs.apir.receiptiq.com/service/user/token?p=6cac42f3-36ac-4c4c-aac5-f63e6f2ae15c&s=120fb46d-ef6b-4ef1-8913-64c8e487c5da&u=08642403500&ut=LoyaltyNumber
+# https://bjs.apir.receiptiq.com/service/offers/activated?t=e477faaf-87d3-4dea-bccc-76927f9c0f4d&a=0bb27904-1297-48d9-b649-1f1e098fd95f&n=400&i=0&sb=EX&so=asc
+# filter="redeemable:yes"
+# channel = Toshiba Vector
+# transactionID
+# zipcode
+# offers - json
 
-#https://bjs.apir.receiptiq.com/service/offers/redeem?t=17e25ecb-7e4f-4961-8b99-27efa410081f&a=0bb27904-1297-48d9-b649-1f1e098fd95f
+# https://bjs.apir.receiptiq.com/service/offers/redeem?t=17e25ecb-7e4f-4961-8b99-27efa410081f&a=0bb27904-1297-48d9-b649-1f1e098fd95f
 
 
 ##TODO Set timeouts on connections
 import os
 from flask import Flask, request, jsonify
-from flask_pymongo import PyMongo
 import boto3
 import simplejson
-from boto3.dynamodb.conditions import Key
-
+from boto3.dynamodb.conditions import Key, Attr
+from flask import render_template
+from flask import Flask, redirect, url_for, request
+from datetime import datetime
+from logging.config import dictConfig
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+        'formatter': 'default'
+    }},
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi']
+    }
+})
 application = Flask(__name__)
 tableName = "members"
 dynamodb = boto3.resource(
@@ -34,16 +51,36 @@ dynamo_client = boto3.client(
 
 
 @application.route("/")
-def index():
-    return jsonify(status=True, message="Welcome to the Dockerized Flask DynamoDB app!")
+@application.route("/hello/<name>")
+def hello(name=None):
+    return render_template("hello.html", name=name)
 
 
 @application.route("/listtables")
 def list_table():
-    response = boto3.client(
+    dynamo_client = boto3.client(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
-    ).list_tables()
-    return jsonify(status=True, message=response)
+    )
+
+    tables = dynamo_client.list_tables()
+    # partitions = dynamo_client.get_partitions()
+    # pindexes = get_partition_indexes(    DatabaseName='string',  TableName='members',)
+    return render_template("listtables.html", tableNames=tables)
+
+
+@application.route("/success/<name>")
+def success(name):
+    return "welcome %s" % name
+
+
+@application.route("/login", methods=["POST", "GET"])
+def login():
+    if request.method == "POST":
+        user = request.form["nm"]
+        return redirect(url_for("success", name=user))
+    else:
+        user = request.args.get("nm")
+        return redirect(url_for("success", name=user))
 
 
 @application.route("/inittable")
@@ -84,7 +121,6 @@ def init_table():
                 "KeySchema": [
                     {"AttributeName": "PK", "KeyType": "HASH"},  # Partition key
                     {"AttributeName": "EndDate", "KeyType": "RANGE"},  # Sort key
-                
                 ],
                 "Projection": {"ProjectionType": "ALL"},
             },
@@ -105,89 +141,106 @@ def init_table():
     return "Table created"
 
 
-@application.route("/createmember")
+@application.route("/createmember", methods=["POST", "GET"])
 def create_member():
-    # if not dynamodb:
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
-
     table = dynamodb.Table(tableName)
-    response = table.put_item(
-        Item={
-            "PK": "USER#ddayley",
-            "SK": "#PROFILE#ddayley",
-            "Email": "ddayley@bjs.com",
-            "ActiveDate": 20210401,
-            "EndDate": 20210405,
-        }
-    )   
+    if request.method == "POST":
+        now = datetime.now()
+        current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
+        response = table.put_item(
+            Item={
+                "PK": request.form["PK"],
+                "SK": request.form["SK"],
+                "Email": request.form["Email"],
+                "LastUpdatedDate": current_time,
+                "ActiveDate": int(request.form["ActiveDate"]),
+                "EndDate": int(request.form["EndDate"]),
+            }
+        )
+    else:
+
+        table = dynamodb.Table(tableName)
+        response = table.put_item(
+            Item={
+                "PK": "USER#ddayley",
+                "SK": "#PROFILE#ddayley",
+                "Email": "ddayley@bjs.com",
+                "LastUpdatedDate": current_time,
+                "ActiveDate": 20210401,
+                "EndDate": 20210405,
+            }
+        )
     return jsonify(status=True, data=response)
 
 
-@application.route("/createoffer")
+@application.route("/createoffer", methods=["POST", "GET"])
 def create_offer():
     # if not dynamodb:
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
     table = dynamodb.Table(tableName)
-    response = table.put_item(
-        Item={
-            "PK": "USER#ddayley",
-            "SK": "OFFER#bounty",
-            "OfferCode": "21474008",
-            "OfferType": "Recommended",
-            "OfferID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
-            "LastUpdatedDate": "04-01-21",
-            "ActiveDate": 20210401,
-            "EndDate": 20210405,
-        }
-    )
-    response = table.put_item(
-        Item={
-            "PK": "USER#ddayley",
-            "SK": "OFFER#tide",
-            "OfferCode": "21474008",
-            "OfferType": "Recommended",
-            "OfferID": "e517d523-a6d4-4f47-8e5d-c7e7f052bf11",
-            "Redeemed": "False",
-            "LastUpdatedDate": "04-01-21",
-            "ActiveDate": 20210401,
-            "EndDate": 20210405,
-        }
-    )
-    # esponse = table.put_item(
-    #     Item={
-    #         "PK": "USER#ndayley",
-    #         "SK": "OFFER#tide",
-    #         "OfferCode": "21474008",
-    #         "OfferType": "Recommended",
-    #         "OfferID": "e517d523-a6d4-4f47-8e5d-c7e7f052bf11",
-    #         "LastUpdatedDate": "04-01-21",
-    #         "ActiveDate": 20210401,
-    #         "EndDate": 20210405,
-    #     }
-    # )
+    if request.method == "POST":
+        now = datetime.now()
+        current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
+        response = table.put_item(
+            Item={
+                "PK": request.form["PK"],
+                "SK": request.form["SK"],
+                "OfferCode": request.form["OfferCode"],
+                "OfferType": request.form["OfferType"],
+                "OfferID": request.form["OfferID"],
+                "Redeemed": request.form["Redeemed"],
+                "LastUpdatedDate": current_time,
+                "ActiveDate": int(request.form["ActiveDate"]),
+                "EndDate": int(request.form["EndDate"]),
+            }
+        )
+    else:
+        response = table.put_item(
+            Item={
+                "PK": "USER#ddayley",
+               # "SK": "2021-04-05",
+                "SK": "OFFER#bounty",
+                "OfferCode": "21474008",
+                "OfferType": "Recommended",
+                "OfferID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+                "LastUpdatedDate": "04-01-21",
+                "ActiveDate": 20210401,
+                "EndDate": 20210405,
+            }
+        )
+
     return jsonify(status=True, data=response)
 
-
+@application.route("/getActiveOffers/<name>")
 @application.route("/getActiveOffers")
-def getActiveOffers():
+def getActiveOffers(name=None):
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
     table = dynamodb.Table(tableName)
     cDate = "2021-04-01"
-    memberID = "USER#ddayley"
+    if not name:
+      memberID = "USER#ddayley"
+    else:
+      memberID = "USER#" + name
+    application.logger.info('Query is using %s ', memberID)
     response = table.query(
         TableName="members",
         IndexName="ActiveOffers",
-        KeyConditionExpression=Key("PK").eq("USER#ddayley")
-        & Key("EndDate").gt(20210407),
+        KeyConditionExpression=Key("PK").eq(memberID) & Key("EndDate").gte(20210404),
+        FilterExpression=Attr('ActiveDate').gte(20210401) & Attr('Redeemed').ne("True")
     )
+    ##TODO Add Category hierachy to PK
     ##TODO Filter out the upcoming offers
-    return simplejson.dumps(response["Items"]), 201
+    ##TODO Filter out Redeemed offers
+    ##TODO Update Redeemed Flag - Read about locking and GSI
+    return render_template("query.html", offers=response["Items"])
+    # return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
 
 
