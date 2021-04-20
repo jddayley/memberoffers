@@ -7,8 +7,7 @@
   <link href="/static/tabulator.min.css" rel="stylesheet">
   <script type="text/javascript" src="/static/tabulator.min.js"></script>
   <link href="/static/don.css" rel="stylesheet">
-
-</head>
+ </head>
 
 <body>
   {% if name %}
@@ -16,10 +15,9 @@
 {% else %}
 
 {% endif %}
-  {% include 'offer.html' %}
-  {% include 'member.html' %}
 
 
+<h1>Member to Offer Association</h1>
   <div id="example-table"></div>
 
     <script>
@@ -30,28 +28,11 @@
       var table = new Tabulator("#example-table", {
           data:tabledata,
           autoColumns:true,
-      });
-      //Add row on "Add Row" button click
-$("#add-row").click(function(){
-    $("#example-table").tabulator("addRow", {});
-});
+        });
 
-//Delete row on "Delete Row" button click
-$("#del-row").click(function(){
-    $("#example-table").tabulator("deleteRow", 1);
-});
-
-//Clear table on "Empty the table" button click
-$("#clear").click(function(){
-    $("#example-table").tabulator("clearData");
-});
-
-//Reset table contents on "Reset the table" button click
-$("#reset").click(function(){
-    $("#example-table").tabulator("setData", tabledata);
-});
       </script>
-
+  {% include 'offer.html' %}
+  {% include 'member.html' %}
    
 </body>
 
