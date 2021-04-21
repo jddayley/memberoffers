@@ -17,6 +17,7 @@
 
 ##TODO Set timeouts on connections
 import os
+from decimal import Decimal
 from flask import Flask, request, jsonify
 import boto3
 import simplejson
@@ -25,21 +26,25 @@ from flask import render_template
 from flask import Flask, redirect, url_for, request
 from datetime import datetime
 from logging.config import dictConfig
-dictConfig({
-    'version': 1,
-    'formatters': {'default': {
-        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-    }},
-    'handlers': {'wsgi': {
-        'class': 'logging.StreamHandler',
-        'stream': 'ext://flask.logging.wsgi_errors_stream',
-        'formatter': 'default'
-    }},
-    'root': {
-        'level': 'INFO',
-        'handlers': ['wsgi']
+
+dictConfig(
+    {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+            }
+        },
+        "handlers": {
+            "wsgi": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://flask.logging.wsgi_errors_stream",
+                "formatter": "default",
+            }
+        },
+        "root": {"level": "INFO", "handlers": ["wsgi"]},
     }
-})
+)
 application = Flask(__name__)
 tableName = "members"
 dynamodb = boto3.resource(
@@ -53,10 +58,26 @@ dynamo_client = boto3.client(
 @application.route("/")
 @application.route("/hello/<name>")
 def hello(name=None):
-    return render_template("hello.html", name=name)
+    return render_template("index.html", name=name)
 
+@application.route("/ActiveOffers")
+@application.route("/ActiveOffers/<offerid>")
+def ActiveOffers(offerid=None):
+    offerid= "OFFER#1234"
+    application.logger.info("Query is using %s ", offerid)
+    table = dynamodb.Table(tableName)
+    dynamo_client = boto3.client(
+        "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
+    )
+    response = table.query(
+        TableName="members",
+        IndexName="ActiveOffers",
+        KeyConditionExpression=Key("PK").eq(offerid) & Key("EndDate").gte(20210404),
+        FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
+    )
+    return render_template("offers.html", offers=response["Items"])
 
-@application.route("/listtables")
+@application.route("/dbdetails")
 def list_table():
     dynamo_client = boto3.client(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
@@ -65,7 +86,7 @@ def list_table():
     tables = dynamo_client.list_tables()
     # partitions = dynamo_client.get_partitions()
     # pindexes = get_partition_indexes(    DatabaseName='string',  TableName='members',)
-    return render_template("listtables.html", tableNames=tables)
+    return render_template("dbdetails.html", tableNames=tables)
 
 
 @application.route("/success/<name>")
@@ -125,7 +146,7 @@ def init_table():
                 "Projection": {"ProjectionType": "ALL"},
             },
             {
-                "IndexName": "OffersByStartDate",
+                "IndexName": "MemberOffers",
                 "KeySchema": [
                     {"AttributeName": "PK", "KeyType": "HASH"},  # Partition key
                     {"AttributeName": "ActiveDate", "KeyType": "RANGE"},  # Sort key
@@ -147,9 +168,9 @@ def create_member():
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
     table = dynamodb.Table(tableName)
+    now = datetime.now()
+    current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
     if request.method == "POST":
-        now = datetime.now()
-        current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
         response = table.put_item(
             Item={
                 "PK": request.form["PK"],
@@ -203,7 +224,7 @@ def create_offer():
         response = table.put_item(
             Item={
                 "PK": "USER#ddayley",
-               # "SK": "2021-04-05",
+                # "SK": "2021-04-05",
                 "SK": "OFFER#bounty",
                 "OfferCode": "21474008",
                 "OfferType": "Recommended",
@@ -215,25 +236,24 @@ def create_offer():
         )
 
     return jsonify(status=True, data=response)
-
-@application.route("/getActiveOffers/<name>")
-@application.route("/getActiveOffers")
-def getActiveOffers(name=None):
+@application.route("/MemberOffers/<name>")
+@application.route("/MemberOffers")
+def getMemberOffers(name=None):
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
     table = dynamodb.Table(tableName)
     cDate = "2021-04-01"
     if not name:
-      memberID = "USER#ddayley"
+        memberID = "USER#ddayley"
     else:
-      memberID = "USER#" + name
-    application.logger.info('Query is using %s ', memberID)
+        memberID = "USER#" + name
+    application.logger.info("Query is using %s ", memberID)
     response = table.query(
         TableName="members",
         IndexName="ActiveOffers",
         KeyConditionExpression=Key("PK").eq(memberID) & Key("EndDate").gte(20210404),
-        FilterExpression=Attr('ActiveDate').gte(20210401) & Attr('Redeemed').ne("True")
+        FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
     )
     ##TODO Add Category hierachy to PK
     ##TODO Filter out the upcoming offers
@@ -243,6 +263,44 @@ def getActiveOffers(name=None):
     # return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
 
+
+@application.route("/Redeem", defaults={"memberid": None, "offerid": None})
+@application.route("/Redeem/<memberid>/<offerid>/<quantity>")
+def offer_redeem(memberid, offerid, quantity=1):
+    if not memberid:
+        memberid = "USER#ddayley"
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-west-1",
+            endpoint_url="http://dynamodb-local:8000",
+        )
+        table = dynamodb.Table(tableName)
+        cDate = "2021-04-01"
+        application.logger.info("Query is using %s ", memberid)
+        response = table.query(
+            TableName="members",
+            IndexName="ActiveOffers",
+            KeyConditionExpression=Key("PK").eq(memberid)
+            & Key("EndDate").gte(20210404),
+            FilterExpression=Attr("ActiveDate").gte(20210401)
+            & Attr("Redeemed").ne("True"),
+        )
+        return render_template("redeem.html", offers=response["Items"])
+    else:
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-west-1",
+            endpoint_url="http://dynamodb-local:8000",
+        )
+        table = dynamodb.Table(tableName)
+
+        response = table.update_item(
+            Key={"PK": "USER#ddayley", "SK": "OFFER#bounty"},
+            UpdateExpression="set Redeemed = :val",
+            ExpressionAttributeValues={":val": quantity},
+            ReturnValues="UPDATED_NEW",
+        )
+        return jsonify(status=True, data=response)
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)

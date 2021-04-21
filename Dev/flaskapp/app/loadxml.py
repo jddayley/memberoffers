@@ -8,7 +8,7 @@ def main():
     )
     root = tree.getroot()
     for elem in tree.iter():
-        print(elem)
+        print(elem.tag + " , text: " + elem.text)
 
 
 # print out the document node and the name of the first child tag

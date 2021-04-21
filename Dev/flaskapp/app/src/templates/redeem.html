@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <title>Starting Point</title>
+  <head></head>
+  <link href="/static/tabulator.min.css" rel="stylesheet">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script type="text/javascript" src="/static/tabulator.min.js"></script>
+  
+   <body>
+      {% set active_page = "Redeem" %}
+
+      {% include 'core/navigation.html' %}
+
+      <h2>Redeem an offer:</h2>
+      <a href='/redeem/ddayley/12345/12345'>member:ddayley, offer:12345, quanity:1</a>
+      <div id="example-table"></div>
+      
+      <script>//Create Date Editor
+         var inputEditor = function(cell, onRendered, success, cancel){
+             //cell - the cell component for the editable cell
+             //onRendered - function to call when the editor has been rendered
+             //success - function to call to pass the successfuly updated value to Tabulator
+             //cancel - function to call to abort the edit and return to a normal cell
+             var cellValue = cell.getValue();
+             //create and style input
+             input = document.createElement("input");
+             input.style.padding = "4px";
+             input.style.width = "100%";
+             input.style.boxSizing = "border-box";
+         
+             input.value = cellValue;
+         
+             onRendered(function(){
+                 input.focus();
+                 input.style.height = "100%";
+             });
+         
+             function onChange(){
+                console.log('onchange')
+                 if(input.value != cellValue){
+                     console.log('success')
+                      $.get('/redeem/ddayley/123/' + input.value, function (data, status) {
+                      alert("Data: " + data + "\nStatus: " + status)
+                      });
+                     success(input.value);
+                 }else{
+                     console.log('success')
+                     cancel();
+                 }
+             }
+         
+             //submit new value on blur or change
+             input.addEventListener("blur", onChange);
+         
+             //submit new value on enter
+             input.addEventListener("keydown", function(e){
+                 if(e.keyCode == 13){
+                     console.log('key 13')
+                     onChange();
+                 }
+         
+                 if(e.keyCode == 27){
+                     console.log('key 27')
+                     cancel();
+                 }
+             });
+         
+             return input;
+         };</script>
+      <script>
+      var tabledata = [ {% for value in offers %} {{ value | tojson | safe }}, {% endfor %} ];
+      var table = new Tabulator("#example-table", {
+         data:tabledata,           //load row data from array
+         layout:"fitColumns",      //fit columns to width of table
+         responsiveLayout:"hide",  //hide columns that dont fit on the table
+         tooltips:true,            //show tool tips on cells
+         addRowPos:"top",          //when adding a new row, add it to the top of the table
+         history:true,             //allow undo and redo actions on the table
+         pagination:"local",       //paginate the data
+         paginationSize:7,         //allow 7 rows per page of data
+         movableColumns:true,      //allow column order to be changed
+         resizableRows:true,       //allow row order to be changed
+         initialSort:[             //set the initial sort order of the data
+             {column:"PK", dir:"asc"},
+         ],
+         columns:[                 //define the table columns
+             {title:"PK", field:"PK", editor:"input"},
+             {title:"SK", field:"SK", hozAlign:"left"},
+             {title:"Redeemed", field:"Redeemed", width:130, sorter:"date", hozAlign:"center", editor:inputEditor},
+             {title:"OfferCode", field:"OfferCode", width:95 },
+             {title:"OfferID", field:"OfferID", width:130},
+             {title:"OfferType", field:"OfferType", width:130, sorter:"date", hozAlign:"center"},
+             {title:"EndDate", field:"EndDate", width:90, hozAlign:"center"}, 
+         ],
+     });
+   </script>
+   </body>
+</html>
