@@ -1,7 +1,9 @@
-# memberoffers
+# Customer Offers
 
 ## About
-A Flask Application that associates customers to offers.   It utlizes the local DynamoDB server.
+The memberoffers application is a Flask Application that associates customers to offers.   It utlizes a local DynamoDB server and follows a single table design (see AWS re:invent topics). It contains 2 entities: customer and offers. The entities are prefixed in the Primary Key and Sort Key.  It has a many to many relationship and that relationship also is modeled with the PK and SK using a prefix.
+
+The table shows the single table design.
 
 ## Installation
 1.  Make sure you have Docker installed.
