@@ -100,7 +100,7 @@ def hello(name=None):
 @application.route("/ActiveOffers")
 @application.route("/ActiveOffers/<offerID>")
 def ActiveOffers(offerID=None):
-    offerID= "OFFER#1234"
+    offerID= "BJ#OFFER"
     application.logger.info("Query is using %s ", offerID)
     table = dynamodb.Table(tableName)
     dynamo_client = boto3.client(
@@ -262,6 +262,18 @@ def create_offer():
             Item={
                 "PK": "USER#ddayley",
                 # "SK": "2021-04-05",
+                "SK": "OFFER#bounty",
+                "OfferCode": "21474008",
+                "OfferType": "Recommended",
+                "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+                "LastUpdatedDate": "04-01-21",
+                "ActiveDate": 20210401,
+                "EndDate": 20210405,
+            }
+        )
+        response = table.put_item(
+            Item={
+                "PK": "BJ#OFFER",
                 "SK": "OFFER#bounty",
                 "OfferCode": "21474008",
                 "OfferType": "Recommended",
