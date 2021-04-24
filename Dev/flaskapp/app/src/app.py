@@ -54,6 +54,43 @@ dynamo_client = boto3.client(
     "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
 )
 
+@application.route("/Redeem", defaults={"memberID": None, "offerID": None})
+@application.route("/Redeem/<memberID>/<offerID>/<quantity>")
+def offer_redeem(memberID, offerID, quantity=1):
+    if not memberID:
+        memberID = "USER#ddayley"
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-west-1",
+            endpoint_url="http://dynamodb-local:8000",
+        )
+        table = dynamodb.Table(tableName)
+        #cDate = "2021-04-01"
+        application.logger.info("Query is using %s ", memberID)
+        response = table.query(
+            TableName="members",
+            IndexName="ActiveOffers",
+            KeyConditionExpression=Key("PK").eq(memberID) & Key("EndDate").gte(20210404),
+            FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
+        )
+        return render_template("redeem.html", offers=response["Items"])
+    
+    else:
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-west-1",
+            endpoint_url="http://dynamodb-local:8000",
+        )
+        table = dynamodb.Table(tableName)
+
+        response = table.update_item(
+            Key={"PK": memberID, "SK": offerID},
+            UpdateExpression="set Redeemed = :val",
+            ExpressionAttributeValues={":val": quantity },
+            ReturnValues="UPDATED_NEW",
+        )
+        return jsonify(status=True, data=response)
+    return "Error"
 
 @application.route("/")
 @application.route("/hello/<name>")
@@ -61,10 +98,10 @@ def hello(name=None):
     return render_template("index.html", name=name)
 
 @application.route("/ActiveOffers")
-@application.route("/ActiveOffers/<offerid>")
-def ActiveOffers(offerid=None):
-    offerid= "OFFER#1234"
-    application.logger.info("Query is using %s ", offerid)
+@application.route("/ActiveOffers/<offerID>")
+def ActiveOffers(offerID=None):
+    offerID= "OFFER#1234"
+    application.logger.info("Query is using %s ", offerID)
     table = dynamodb.Table(tableName)
     dynamo_client = boto3.client(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
@@ -72,7 +109,7 @@ def ActiveOffers(offerid=None):
     response = table.query(
         TableName="members",
         IndexName="ActiveOffers",
-        KeyConditionExpression=Key("PK").eq(offerid) & Key("EndDate").gte(20210404),
+        KeyConditionExpression=Key("PK").eq(offerID) & Key("EndDate").gte(20210404),
         FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
     )
     return render_template("offers.html", offers=response["Items"])
@@ -114,7 +151,7 @@ def init_table():
         )
         response = dynamo_client.delete_table(TableName="members")
     except:
-        print("Error - Resource Does not exist!")
+       application.logger.error("Error - Resource does not exist!")
     # Create the DynamoDB table.
     table = dynamo_client.create_table(
         TableName="members",
@@ -213,7 +250,7 @@ def create_offer():
                 "SK": request.form["SK"],
                 "OfferCode": request.form["OfferCode"],
                 "OfferType": request.form["OfferType"],
-                "OfferID": request.form["OfferID"],
+                "offerID": request.form["offerID"],
                 "Redeemed": request.form["Redeemed"],
                 "LastUpdatedDate": current_time,
                 "ActiveDate": int(request.form["ActiveDate"]),
@@ -228,7 +265,7 @@ def create_offer():
                 "SK": "OFFER#bounty",
                 "OfferCode": "21474008",
                 "OfferType": "Recommended",
-                "OfferID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+                "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
                 "LastUpdatedDate": "04-01-21",
                 "ActiveDate": 20210401,
                 "EndDate": 20210405,
@@ -263,44 +300,6 @@ def getMemberOffers(name=None):
     # return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
 
-
-@application.route("/Redeem", defaults={"memberid": None, "offerid": None})
-@application.route("/Redeem/<memberid>/<offerid>/<quantity>")
-def offer_redeem(memberid, offerid, quantity=1):
-    if not memberid:
-        memberid = "USER#ddayley"
-        dynamodb = boto3.resource(
-            "dynamodb",
-            region_name="us-west-1",
-            endpoint_url="http://dynamodb-local:8000",
-        )
-        table = dynamodb.Table(tableName)
-        cDate = "2021-04-01"
-        application.logger.info("Query is using %s ", memberid)
-        response = table.query(
-            TableName="members",
-            IndexName="ActiveOffers",
-            KeyConditionExpression=Key("PK").eq(memberid)
-            & Key("EndDate").gte(20210404),
-            FilterExpression=Attr("ActiveDate").gte(20210401)
-            & Attr("Redeemed").ne("True"),
-        )
-        return render_template("redeem.html", offers=response["Items"])
-    else:
-        dynamodb = boto3.resource(
-            "dynamodb",
-            region_name="us-west-1",
-            endpoint_url="http://dynamodb-local:8000",
-        )
-        table = dynamodb.Table(tableName)
-
-        response = table.update_item(
-            Key={"PK": "USER#ddayley", "SK": "OFFER#bounty"},
-            UpdateExpression="set Redeemed = :val",
-            ExpressionAttributeValues={":val": quantity},
-            ReturnValues="UPDATED_NEW",
-        )
-        return jsonify(status=True, data=response)
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
