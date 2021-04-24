@@ -54,6 +54,7 @@ dynamo_client = boto3.client(
     "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
 )
 
+
 @application.route("/Redeem", defaults={"memberID": None, "offerID": None})
 @application.route("/Redeem/<memberID>/<offerID>/<quantity>")
 def offer_redeem(memberID, offerID, quantity=1):
@@ -65,16 +66,18 @@ def offer_redeem(memberID, offerID, quantity=1):
             endpoint_url="http://dynamodb-local:8000",
         )
         table = dynamodb.Table(tableName)
-        #cDate = "2021-04-01"
+        # cDate = "2021-04-01"
         application.logger.info("Query is using %s ", memberID)
         response = table.query(
             TableName="members",
             IndexName="ActiveOffers",
-            KeyConditionExpression=Key("PK").eq(memberID) & Key("EndDate").gte(20210404),
-            FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
+            KeyConditionExpression=Key("PK").eq(memberID)
+            & Key("EndDate").gte(20210404),
+            FilterExpression=Attr("ActiveDate").gte(20210401)
+            & Attr("Redeemed").ne("True"),
         )
         return render_template("redeem.html", offers=response["Items"])
-    
+
     else:
         dynamodb = boto3.resource(
             "dynamodb",
@@ -86,21 +89,23 @@ def offer_redeem(memberID, offerID, quantity=1):
         response = table.update_item(
             Key={"PK": memberID, "SK": offerID},
             UpdateExpression="set Redeemed = :val",
-            ExpressionAttributeValues={":val": quantity },
+            ExpressionAttributeValues={":val": quantity},
             ReturnValues="UPDATED_NEW",
         )
         return jsonify(status=True, data=response)
     return "Error"
+
 
 @application.route("/")
 @application.route("/hello/<name>")
 def hello(name=None):
     return render_template("index.html", name=name)
 
+
 @application.route("/ActiveOffers")
 @application.route("/ActiveOffers/<offerID>")
 def ActiveOffers(offerID=None):
-    offerID= "BJ#OFFER"
+    offerID = "BJ#OFFER"
     application.logger.info("Query is using %s ", offerID)
     table = dynamodb.Table(tableName)
     dynamo_client = boto3.client(
@@ -114,6 +119,7 @@ def ActiveOffers(offerID=None):
     )
     return render_template("offers.html", offers=response["Items"])
 
+
 @application.route("/dbdetails")
 def list_table():
     dynamo_client = boto3.client(
@@ -124,11 +130,6 @@ def list_table():
     # partitions = dynamo_client.get_partitions()
     # pindexes = get_partition_indexes(    DatabaseName='string',  TableName='members',)
     return render_template("dbdetails.html", tableNames=tables)
-
-
-@application.route("/success/<name>")
-def success(name):
-    return "welcome %s" % name
 
 
 @application.route("/login", methods=["POST", "GET"])
@@ -151,7 +152,7 @@ def init_table():
         )
         response = dynamo_client.delete_table(TableName="members")
     except:
-       application.logger.error("Error - Resource does not exist!")
+        application.logger.error("Error - Resource does not exist!")
     # Create the DynamoDB table.
     table = dynamo_client.create_table(
         TableName="members",
@@ -199,11 +200,12 @@ def init_table():
     return "Table created"
 
 
-@application.route("/createmember", methods=["POST", "GET"])
+@application.route("/service/user/register", methods=["POST", "GET"])
 def create_member():
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
     )
+    application.logger.info("Posting Data %s ", request.form["SK"])
     table = dynamodb.Table(tableName)
     now = datetime.now()
     current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
@@ -218,19 +220,6 @@ def create_member():
                 "EndDate": int(request.form["EndDate"]),
             }
         )
-    else:
-
-        table = dynamodb.Table(tableName)
-        response = table.put_item(
-            Item={
-                "PK": "USER#ddayley",
-                "SK": "#PROFILE#ddayley",
-                "Email": "ddayley@bjs.com",
-                "LastUpdatedDate": current_time,
-                "ActiveDate": 20210401,
-                "EndDate": 20210405,
-            }
-        )
     return jsonify(status=True, data=response)
 
 
@@ -242,49 +231,25 @@ def create_offer():
     )
     table = dynamodb.Table(tableName)
     if request.method == "POST":
+        application.logger.info("Posting Data %s ", request.form["SK"])
         now = datetime.now()
-        current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
+        current_time = now.strftime("%Y/%m/%d %H:%M:%S")
         response = table.put_item(
             Item={
-                "PK": request.form["PK"],
-                "SK": request.form["SK"],
-                "OfferCode": request.form["OfferCode"],
-                "OfferType": request.form["OfferType"],
-                "offerID": request.form["offerID"],
-                "Redeemed": request.form["Redeemed"],
-                "LastUpdatedDate": current_time,
-                "ActiveDate": int(request.form["ActiveDate"]),
-                "EndDate": int(request.form["EndDate"]),
-            }
+            "PK": request.form["PK"],
+            "SK": request.form["SK"],
+            "OfferCode": request.form["OfferCode"],
+            "OfferType": request.form["OfferType"],
+            "OfferID": request.form["OfferID"],
+            "LastUpdatedDate": current_time,
+            "ActiveDate": int(request.form["ActiveDate"]),
+            "EndDate": int(request.form["EndDate"]),
+        }
         )
-    else:
-        response = table.put_item(
-            Item={
-                "PK": "USER#ddayley",
-                # "SK": "2021-04-05",
-                "SK": "OFFER#bounty",
-                "OfferCode": "21474008",
-                "OfferType": "Recommended",
-                "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
-                "LastUpdatedDate": "04-01-21",
-                "ActiveDate": 20210401,
-                "EndDate": 20210405,
-            }
-        )
-        response = table.put_item(
-            Item={
-                "PK": "BJ#OFFER",
-                "SK": "OFFER#bounty",
-                "OfferCode": "21474008",
-                "OfferType": "Recommended",
-                "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
-                "LastUpdatedDate": "04-01-21",
-                "ActiveDate": 20210401,
-                "EndDate": 20210405,
-            }
-        )
-
+        application.logger.info("Posting Data Complete")
     return jsonify(status=True, data=response)
+
+
 @application.route("/MemberOffers/<name>")
 @application.route("/MemberOffers")
 def getMemberOffers(name=None):
@@ -311,6 +276,57 @@ def getMemberOffers(name=None):
     return render_template("query.html", offers=response["Items"])
     # return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
+
+
+@application.route("/createsampledata")
+def sampledata(name=None):
+    now = datetime.now()
+    current_time = now.strftime("%Y/%m/%d %H:%M:%S")
+    dynamo_client = boto3.client(
+        "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
+    )
+
+    table = dynamodb.Table(tableName)
+    response = table.put_item(
+        # MEMBER ENTITY
+        Item={
+            "PK": "USER#sample",
+            "SK": "#PROFILE#sample",
+            "Email": "ddayley@bjs.com",
+            "LastUpdatedDate": current_time,
+            "ActiveDate": 20210401,
+            "EndDate": 20210405,
+        }
+    )
+    response = table.put_item(
+        # MEMBER/OFFER
+        Item={
+            "PK": "USER#ddayley",
+            # "SK": "2021-04-05",
+            "SK": "OFFER#bounty",
+            "OfferCode": "21474008",
+            "OfferType": "Recommended",
+            "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+            "LastUpdatedDate": "04-01-21",
+            "ActiveDate": 20210401,
+            "EndDate": 20210405,
+        }
+    )
+    response = table.put_item(
+        # OFFER ENTITY
+        Item={
+            "PK": "BJ#OFFER",
+            "SK": "OFFER#bounty",
+            "OfferCode": "21474008",
+            "OfferType": "Recommended",
+            "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+            "LastUpdatedDate": "04-01-21",
+            "ActiveDate": 20210401,
+            "EndDate": 20210405,
+        }
+    )
+
+    return jsonify(status=True, data=response)
 
 
 if __name__ == "__main__":
