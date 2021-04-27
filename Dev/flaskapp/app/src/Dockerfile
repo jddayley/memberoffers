@@ -9,9 +9,7 @@ WORKDIR /var/www/
 
 ADD . /var/www/
 RUN pip install -r requirements.txt
-RUN pip install gunicorn
-RUN pip install boto
-RUN pip install configparser
+
 #RUN sudo apt-get install python3.6-dev
 #RUN sudo apt install uwsgi uwsgi-plugin-python3
 RUN addgroup -g $GROUP_ID www

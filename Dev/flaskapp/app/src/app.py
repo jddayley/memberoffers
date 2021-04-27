@@ -13,6 +13,14 @@
 # offers - json
 
 # https://bjs.apir.receiptiq.com/service/offers/redeem?t=17e25ecb-7e4f-4961-8b99-27efa410081f&a=0bb27904-1297-48d9-b649-1f1e098fd95f
+# /service/user/register
+# /service/user/profile
+# /service/offers/recommended
+# /service/offers/targeted
+# /service/offers/activate
+# /service/offers/activated
+# /service/offers/redeem
+# /service/offers/all
 
 
 ##TODO Set timeouts on connections
@@ -21,30 +29,13 @@ from decimal import Decimal
 from flask import Flask, request, jsonify
 import boto3
 import simplejson
+import json
 from boto3.dynamodb.conditions import Key, Attr
 from flask import render_template
 from flask import Flask, redirect, url_for, request
 from datetime import datetime
 from logging.config import dictConfig
 
-dictConfig(
-    {
-        "version": 1,
-        "formatters": {
-            "default": {
-                "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-            }
-        },
-        "handlers": {
-            "wsgi": {
-                "class": "logging.StreamHandler",
-                "stream": "ext://flask.logging.wsgi_errors_stream",
-                "formatter": "default",
-            }
-        },
-        "root": {"level": "INFO", "handlers": ["wsgi"]},
-    }
-)
 application = Flask(__name__)
 tableName = "members"
 dynamodb = boto3.resource(
@@ -96,6 +87,51 @@ def offer_redeem(memberID, offerID, quantity=1):
     return "Error"
 
 
+@application.route("/service/user/register", methods=["POST", "GET"])
+def register_user(   zip="01748",):
+    content = json.dumps(request.json)
+    print("p0")
+    request_json = request.get_json()
+    memID = request_json.get("loyaltyNumber")
+    address = request_json.get("address")
+    zipCode = request_json.get("zip")
+    # response_content = None
+
+    if memID is not None:
+        dynamodb = boto3.resource(
+            "dynamodb",
+            region_name="us-west-1",
+            endpoint_url="http://dynamodb-local:8000",
+        )
+        application.logger.info("Posting Data %s ", memID)
+        table = dynamodb.Table(tableName)
+        now = datetime.now()
+        current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
+        if request.method == "POST":
+            response = table.put_item(
+            Item={
+                "PK": "USER#",
+                "SK": "#PROFILE#" + memID,
+                "Address": "None",
+                "Zip": "None",
+                "LastUpdatedDate": current_time,
+
+            }
+        )
+        return str("mem: " + memID) + str(request.query_string)
+    return str(request.query_string) + str(contet)
+    #     print("p3")
+    #     cursor.execute("INSERT INTO person (first_name,last_name) VALUES (%s,%s)", (value1, value2))
+    #     response_content = conn.commit()
+
+
+#     {
+#    "errorCode": "4224",
+#    "errorDescription": "Loyalty Number is already registered for another user"
+#    }
+# "POST /service/user/register?p=6cac42f3-36ac-4c4c-aac5-f63e6f2ae15c&s=120fb46d-ef6b-4ef1-8913-64c8e487c5da&a=08ec9c95-d398-40bb-a139-19f1c0c42267
+
+
 @application.route("/")
 @application.route("/hello/<name>")
 def hello(name=None):
@@ -118,6 +154,22 @@ def ActiveOffers(offerID=None):
         FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
     )
     return render_template("offers.html", offers=response["Items"])
+@application.route("/Members")
+@application.route("/Members/<memID>")
+def Members(memID=None):
+    PK = "USER#"
+    application.logger.info("Query is using %s ", memID)
+    table = dynamodb.Table(tableName)
+    dynamo_client = boto3.client(
+        "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
+    )
+    response = table.query(
+        TableName="members",
+        #IndexName="ActiveOffers",
+        KeyConditionExpression=Key("PK").eq("USER#") & Key("SK").begins_with("#PROFILE#"),
+        #FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
+    )
+    return render_template("members.html", offers=response["Items"])
 
 
 @application.route("/dbdetails")
@@ -200,7 +252,7 @@ def init_table():
     return "Table created"
 
 
-@application.route("/service/user/register", methods=["POST", "GET"])
+@application.route("/register", methods=["POST", "GET"])
 def create_member():
     dynamodb = boto3.resource(
         "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
@@ -236,15 +288,15 @@ def create_offer():
         current_time = now.strftime("%Y/%m/%d %H:%M:%S")
         response = table.put_item(
             Item={
-            "PK": request.form["PK"],
-            "SK": request.form["SK"],
-            "OfferCode": request.form["OfferCode"],
-            "OfferType": request.form["OfferType"],
-            "OfferID": request.form["OfferID"],
-            "LastUpdatedDate": current_time,
-            "ActiveDate": int(request.form["ActiveDate"]),
-            "EndDate": int(request.form["EndDate"]),
-        }
+                "PK": request.form["PK"],
+                "SK": request.form["SK"],
+                "OfferCode": request.form["OfferCode"],
+                "OfferType": request.form["OfferType"],
+                "OfferID": request.form["OfferID"],
+                "LastUpdatedDate": current_time,
+                "ActiveDate": int(request.form["ActiveDate"]),
+                "EndDate": int(request.form["EndDate"]),
+            }
         )
         application.logger.info("Posting Data Complete")
     return jsonify(status=True, data=response)
@@ -306,7 +358,7 @@ def sampledata(name=None):
             "SK": "OFFER#bounty",
             "OfferCode": "21474008",
             "OfferType": "Recommended",
-            "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+            "OfferID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
             "LastUpdatedDate": "04-01-21",
             "ActiveDate": 20210401,
             "EndDate": 20210405,
@@ -319,7 +371,7 @@ def sampledata(name=None):
             "SK": "OFFER#bounty",
             "OfferCode": "21474008",
             "OfferType": "Recommended",
-            "offerID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
+            "OfferID": "d517d523-a6d4-4f47-8e5d-c7e7f052bf11",
             "LastUpdatedDate": "04-01-21",
             "ActiveDate": 20210401,
             "EndDate": 20210405,

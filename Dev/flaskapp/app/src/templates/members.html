@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Members</title>
+
+  <link href="/static/tabulator.min.css" rel="stylesheet">
+  <script type="text/javascript" src="/static/tabulator.min.js"></script>
+
+</head>
+
+<body>
+  {% if name %}
+  <h1>Hello {{ name }}!</h1>
+  {% else %}
+
+  {% endif %}
+  {% set active_page = "Members" %}
+  {% include 'core/navigation.html' %}
+
+  <h2>Member to Offer Association</h2>
+  <div id="example-table"></div>
+
+  <script>
+
+    //define data
+    tabledata = [ {% for value in offers %} {{ value | tojson | safe }}, {% endfor %} ];
+
+    //define table
+    var table = new Tabulator("#example-table", {
+      data: tabledata,
+      layout: "fitDataStretch",
+      autoColumns: true,
+  
+    });
+
+
+  </script>
+  {% include 'forms/memberoffer.html' %}
+  {% include 'forms/member.html' %}
+
+</body>
+
+</html>

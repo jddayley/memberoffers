@@ -3,4 +3,6 @@ Flask-PyMongo==2.2.0
 requests==2.20.1
 boto3
 simplejson
-
+configparser
+boto
+gunicorn
