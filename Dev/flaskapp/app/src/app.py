@@ -88,16 +88,21 @@ def offer_redeem(memberID, offerID, quantity=1):
 
 
 @application.route("/service/user/register", methods=["POST", "GET"])
-def register_user(   zip="01748",):
+def register_user():
     content = json.dumps(request.json)
-    print("p0")
+    
     request_json = request.get_json()
     memID = request_json.get("loyaltyNumber")
     address = request_json.get("address")
-    zipCode = request_json.get("zip")
+    zipCode = address.get("zip")
+    print("p0 " + json.dumps(request_json))
     # response_content = None
-
+    if address is not None:
+        address = "NA"
+    if zipCode is not None:
+        zipCode = "NA"
     if memID is not None:
+
         dynamodb = boto3.resource(
             "dynamodb",
             region_name="us-west-1",
@@ -108,16 +113,21 @@ def register_user(   zip="01748",):
         now = datetime.now()
         current_time = now.strftime("%Y/%m/%d, %H:%M:%S")
         if request.method == "POST":
-            response = table.put_item(
-            Item={
-                "PK": "USER#",
-                "SK": "#PROFILE#" + memID,
-                "Address": "None",
-                "Zip": "None",
-                "LastUpdatedDate": current_time,
+            try:
+                response = table.put_item(
+                    Item={
+                        "PK": "USER#",
+                        "SK": "#PROFILE#" + memID,
+                        "Address": address,
+                        "Zip": zipCode,
+                        "LastUpdatedDate": current_time,
+                    },
+                    ConditionExpression="attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                )
+            except:
+                error = '{ "errorCode": "4224", "errorDescription": "Loyalty Number is already registered for another user"} '
+                return jsonify(json.loads(error)), 400
 
-            }
-        )
         return str("mem: " + memID) + str(request.query_string)
     return str(request.query_string) + str(contet)
     #     print("p3")
@@ -154,6 +164,8 @@ def ActiveOffers(offerID=None):
         FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
     )
     return render_template("offers.html", offers=response["Items"])
+
+
 @application.route("/Members")
 @application.route("/Members/<memID>")
 def Members(memID=None):
@@ -165,9 +177,10 @@ def Members(memID=None):
     )
     response = table.query(
         TableName="members",
-        #IndexName="ActiveOffers",
-        KeyConditionExpression=Key("PK").eq("USER#") & Key("SK").begins_with("#PROFILE#"),
-        #FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
+        # IndexName="ActiveOffers",
+        KeyConditionExpression=Key("PK").eq("USER#")
+        & Key("SK").begins_with("#PROFILE#"),
+        # FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
     )
     return render_template("members.html", offers=response["Items"])
 
