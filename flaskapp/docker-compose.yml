@@ -1,0 +1,102 @@
+version: "3"
+services:
+  flask:
+    build:
+      context: ./app/src
+      dockerfile: Dockerfile
+    container_name: flask
+    image: ddayley/flask-python:3.6
+    restart: unless-stopped
+    environment:
+      APP_ENV: "dev"
+      APP_DEBUG: "True"
+      APP_PORT: 5001
+     # MONGODB_DATABASE: flaskdb
+     # MONGODB_USERNAME: flaskuser
+     # MONGODB_PASSWORD: password
+     # MONGODB_HOSTNAME: mongodb
+      AWS_ACCESS_KEY_ID: "DUMMYIDEXAMPLE"
+      AWS_SECRET_ACCESS_KEY: "DUMMYEXAMPLEKEY"
+      REGION: "us-west-1"
+    volumes:
+      - "./app/src:/var/www"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+     # - mongodb
+      - dynamodb-local
+    links:
+      - dynamodb-local
+    ports:
+      -  "5001:5001"
+ # mongodb:
+ #   image: mongo:4.0.8
+ #   container_name: mongodb
+    #restart: unless-stopped
+    #command: mongod --auth
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=admin
+#      - MONGO_INITDB_ROOT_PASSWORD=password
+#      - MONGO_INITDB_USERNAME=mongodbuser
+#      - MONGO_INITDB_PASSWORD=password
+#      - MONGO_INITDB_DATABASE=flaskdb
+#    volumes:
+#      - mongodbdata:/data/db
+#      - mongodb_config:/data/configdb
+    #   - .data/mongo/:/docker-entrypoint-initdb.d/
+    # networks:
+    #  - backend
+
+  dynamodb-local:
+    command: "-jar DynamoDBLocal.jar -sharedDb -optimizeDbBeforeStartup -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+    networks:
+      - backend
+
+  webserver:
+    build:
+      context: nginx
+      dockerfile: Dockerfile
+    image: ddayley/webserver:latest
+    container_name: webserver
+    restart: unless-stopped
+    environment:
+      APP_ENV: "prod"
+      APP_NAME: "webserver"
+      APP_DEBUG: "true"
+      SERVICE_NAME: "webserver"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginxdata:/var/log/nginx
+    depends_on:
+      - flask
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+ # mongodbdata:
+ #   driver: local
+  #mongodb_config:
+ #   driver: local
+  appdata:
+    driver: local
+  nginxdata:
+    driver: local
+ # flask:
+  #  driver: local
+   

@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <title>Starting Point</title>
+  <link href="/static/tabulator.min.css" rel="stylesheet">
+  <script type="text/javascript" src="/static/tabulator.min.js"></script>
+   <body>
+      {% set active_page = "/" %}
+
+      {% include 'core/navigation.html' %}
+      <form action = "/login" method = "post">
+         <p>Login Name:</p>
+         <p>UserID: <input type = "text" name = "UserID" /></p>
+         <p>Password: <input type = "text" name = "Password" /></p>
+         <p><input type = "submit" value = "submit" /></p>
+      </form>   
+   </body>
+</html>

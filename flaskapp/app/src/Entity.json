@@ -1,0 +1,45 @@
+// Vector & Digital APIs
+// getActiveOffers
+// redeemOffers
+// getToken
+// getAllOffers
+
+// Digital APIs
+// activeOffers
+// get RecommendedOffers
+// Register
+// Member wallet
+
+
+{ "member": [{
+"Attribute Name": "BJS",
+"Partner Code": "",
+"User Code": "",
+"Offer Code": "",
+"OfferAssociationCode": "",
+"TargetCode": "",
+"TargetName": "",
+"Offer Association Score": "",
+"Chain Code": "",
+"Proxy": "",
+"Proxy Type": ""
+},{
+"Attribute Name": "BJS",
+"Partner Code": "",
+"User Code": "",
+"Offer Code": "",
+"OfferAssociationCode": "",
+"TargetCode": "",
+"TargetName": "",
+"ChannelCode": "",
+"Offer Association Score": "",
+"Chain Code": "",
+"Proxy": "",
+"Proxy Type": ""
+}
+]
+}
+
+{"Offer": [{"OfferID": ""}]}
+{"Member:"[{}]}
+

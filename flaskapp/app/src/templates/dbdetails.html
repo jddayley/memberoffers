@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<title>DB Details</title>
+
+<body>
+  {% set active_page = "DBInfo" %}
+  {% include 'core/navigation.html' %}
+  <!-- For loop logic of jinja template -->
+  {% for key, value in tableNames.items() %} {% if key == 'TableNames' %}
+  <h2>{{key}}: {{value}}</h2>
+  {% endif %} {% endfor %}
+  <ul>
+    <li><a href="/inittable">Intialize Table</a></li>
+    <li><a href="/createsampledata">Sample Data For All Entities</a></li>
+  </ul>
+
+
+</body>
+
+</html>
