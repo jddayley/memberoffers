@@ -17,8 +17,8 @@ RUN adduser -D -u $USER_ID -G www www -s /bin/sh
 
 USER www
 
-EXPOSE 5000
+EXPOSE 5001
 
-CMD [ "gunicorn", "-w", "4", "--bind", "0.0.0.0:5000", "wsgi"]
+CMD [ "gunicorn", "-w", "4", "--bind", "0.0.0.0:5001", "wsgi"]
 
 #CMD [ "uwsgi", "--ini", "app.ini" ]

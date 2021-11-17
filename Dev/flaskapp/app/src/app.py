@@ -22,21 +22,35 @@
 # /service/offers/redeem
 # /service/offers/all
 
+# converts Decimal, Datetime, UUIDs to str for Encoding
 
 ##TODO Set timeouts on connections
 import os
 from decimal import Decimal
 from flask import Flask, request, jsonify
+import flask
 import boto3
-import simplejson
 import json
 from boto3.dynamodb.conditions import Key, Attr
 from flask import render_template
 from flask import Flask, redirect, url_for, request
 from datetime import datetime
+import time
 from logging.config import dictConfig
+import simplejson as json
+import decimal
+
+class MyJSONEncoder(flask.json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, datetime): return str(obj)
+        if isinstance(obj, time.struct_time): return datetime.fromtimestamp(time.mktime(o))
+        if isinstance(obj, decimal.Decimal): return str(obj)
+        return super(MyJSONEncoder, self).default(obj)
 
 application = Flask(__name__)
+#JSONEncoder_olddefault = json.JSONEncoder.default
+application.json_encoder = MyJSONEncoder  
 tableName = "members"
 dynamodb = boto3.resource(
     "dynamodb", region_name="us-west-1", endpoint_url="http://dynamodb-local:8000"
@@ -182,8 +196,9 @@ def Members(memID=None):
         & Key("SK").begins_with("#PROFILE#"),
         # FilterExpression=Attr("ActiveDate").gte(20210401) & Attr("Redeemed").ne("True"),
     )
-    return render_template("members.html", offers=response["Items"])
 
+    return render_template("members.html", offers=response['Items'])
+    #return render_template("members.html", offers=json.dumps(response["Items"], cls=DjangoJSONEncoder))
 
 @application.route("/dbdetails")
 def list_table():
@@ -338,8 +353,11 @@ def getMemberOffers(name=None):
     ##TODO Filter out the upcoming offers
     ##TODO Filter out Redeemed offers
     ##TODO Update Redeemed Flag - Read about locking and GSI
+   
     return render_template("query.html", offers=response["Items"])
-    # return simplejson.dumps(response["Items"]), 201
+    #return render_template("query.html", offers= jsonify(status=True, data=response['Items']))
+  
+     #return simplejson.dumps(response["Items"]), 201
     # jsonify(status=True, message=response), 201
 
 
@@ -393,8 +411,15 @@ def sampledata(name=None):
 
     return jsonify(status=True, data=response)
 
+def JSONEncoder_newdefault(self, o):
+    if isinstance(o, UUID): return str(o)
+    if isinstance(o, datetime): return str(o)
+    if isinstance(o, time.struct_time): return datetime.fromtimestamp(time.mktime(o))
+    if isinstance(o, decimal.Decimal): return str(o)
+    return JSONEncoder_olddefault(self, o)
+
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
-    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
+    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5001)
     application.run(host="0.0.0.0", port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)
